@@ -1,0 +1,74 @@
+
+import pandas as pd
+import streamlit as st
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4, landscape
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
+from reportlab.lib.styles import getSampleStyleSheet
+from tempfile import NamedTemporaryFile
+
+st.set_page_config(page_title='Excel para PDF Executivo', layout='wide')
+st.title('📊 Conversor Excel → PDF Executivo (Padrão Corporativo)')
+
+uploaded = st.file_uploader('Selecione um arquivo Excel', type=['xlsx','xls'])
+
+
+def gerar_pdf(excel_file, pdf_file):
+    xls = pd.ExcelFile(excel_file)
+    doc = SimpleDocTemplate(pdf_file, pagesize=landscape(A4))
+    styles = getSampleStyleSheet()
+    elementos = []
+
+    titulo = Paragraph('Relatório Executivo', styles['Title'])
+    elementos.append(titulo)
+    elementos.append(Spacer(1,12))
+
+    for aba in xls.sheet_names:
+        df = pd.read_excel(xls, sheet_name=aba)
+
+        elementos.append(Paragraph(f'Aba: {aba}', styles['Heading2']))
+        elementos.append(Spacer(1,6))
+
+        resumo = [
+            ['Indicador', 'Valor'],
+            ['Quantidade de Linhas', str(len(df))],
+            ['Quantidade de Colunas', str(len(df.columns))]
+        ]
+
+        tbl_resumo = Table(resumo, colWidths=[200,120])
+        tbl_resumo.setStyle(TableStyle([
+            ('BACKGROUND',(0,0),(-1,0),colors.HexColor('#005B96')),
+            ('TEXTCOLOR',(0,0),(-1,0),colors.white),
+            ('GRID',(0,0),(-1,-1),1,colors.black)
+        ]))
+        elementos.append(tbl_resumo)
+        elementos.append(Spacer(1,10))
+
+        dados = [list(df.columns)] + df.fillna('').astype(str).values.tolist()
+
+        tabela = Table(dados)
+        tabela.setStyle(TableStyle([
+            ('BACKGROUND',(0,0),(-1,0),colors.HexColor('#0070C0')),
+            ('TEXTCOLOR',(0,0),(-1,0),colors.white),
+            ('GRID',(0,0),(-1,-1),0.5,colors.grey),
+            ('ROWBACKGROUNDS',(0,1),(-1,-1),[colors.whitesmoke, colors.lightgrey])
+        ]))
+
+        elementos.append(tabela)
+        elementos.append(PageBreak())
+
+    doc.build(elementos)
+
+
+if uploaded:
+    with NamedTemporaryFile(delete=False, suffix='.pdf') as tmp:
+        gerar_pdf(uploaded, tmp.name)
+        with open(tmp.name, 'rb') as f:
+            st.download_button(
+                '📥 Baixar PDF Executivo',
+                f.read(),
+                file_name='Relatorio_Executivo.pdf',
+                mime='application/pdf'
+            )
+
+    st.success('PDF gerado com sucesso!')
