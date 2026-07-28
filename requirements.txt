@@ -1,0 +1,9 @@
+streamlit
+2
+pandas
+3
+openpyxl
+4
+reportlab
+5
+xlrd
